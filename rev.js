@@ -44,6 +44,10 @@ async function handleRequest(request, { MAPPER }) {
     switch (url.hostname) {
       case 'api.github.com':
         headers.append('Authorization', `Bearer ${url.password}`);
+        headers.append('User-Agent', 'curl/8.0.1');
+        if (url.pathname.indexOf('assets/') !== -1) {
+          headers.append('Accept', 'application/octet-stream');
+        }
         break;
       default:
         break;
