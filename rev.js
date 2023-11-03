@@ -52,10 +52,11 @@ async function handleRequest(request, { MAPPER }) {
           // Get binary response of this release asset
           headers.append('Accept', 'application/octet-stream');
           return fetch(url, {headers}).then(response => {
-            response.headers.set('Content-Type', assetInfo['content_type']);
-            response.headers.append('Content-Disposition', 'attachment');
-            response.headers.append('Content-Disposition', `filename="${assetInfo['name']}"`);
-            return response;
+            const newResponse = new Response(response.body, response);
+            newResponse.headers.set('Content-Type', assetInfo['content_type']);
+            newResponse.headers.append('Content-Disposition', 'attachment');
+            newResponse.headers.append('Content-Disposition', `filename="${assetInfo['name']}"`);
+            return newResponse;
           });
         }
         return fetch(url, {headers});
