@@ -45,14 +45,23 @@ async function handleRequest(request, { MAPPER }) {
       case 'api.github.com':
         headers.append('Authorization', `Bearer ${url.password}`);
         headers.append('User-Agent', 'curl/8.0.1');
+        // Handle asset downloading
         if (url.pathname.indexOf('assets/') !== -1) {
+          // Get asset information
+          const assetInfo = await fetch(url, {headers}).then(r => r.json());
+          // Get binary response of this release asset
           headers.append('Accept', 'application/octet-stream');
+          return fetch(url, {headers}).then(response => {
+            response.headers.set('Content-Type', assetInfo['content_type']);
+            response.headers.append('Content-Disposition', 'attachment');
+            response.headers.append('Content-Disposition', `filename="${assetInfo['name']}"`);
+            return response;
+          });
         }
-        break;
+        return fetch(url, {headers});
       default:
-        break;
+        return fetch(url, {headers});
     }
-    return fetch(url, {headers});
   }
   return new Response("Error.", { status: 500 });
 }
