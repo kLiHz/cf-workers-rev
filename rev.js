@@ -54,8 +54,7 @@ async function handleRequest(request, { MAPPER }) {
           return fetch(url, {headers}).then(response => {
             const newResponse = new Response(response.body, response);
             newResponse.headers.set('Content-Type', assetInfo['content_type']);
-            newResponse.headers.append('Content-Disposition', 'attachment');
-            newResponse.headers.append('Content-Disposition', `filename="${assetInfo['name']}"`);
+            newResponse.headers.set('Content-Disposition', `attachment; filename=${assetInfo['name']}`);
             return newResponse;
           });
         }
