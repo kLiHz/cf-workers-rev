@@ -37,6 +37,13 @@ async function handleRequest(request, { MAPPER }) {
       },
     });
   }
+  if (q.startsWith('css:')) {
+    return new Response(val, {
+      headers: {
+        "content-type": "text/css;charset=utf-8",
+      },
+    });
+  }
   if (isValidHttpUrl(val)) {
     const url = new URL(val);
     const headers = new Headers();
