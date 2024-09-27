@@ -1,11 +1,3 @@
-export default {
-  async fetch(request, env) {
-    return await handleRequest(request, env).catch(
-      (err) => new Response(err.stack, { status: 500 })
-    )
-  }
-}
-
 function isValidHttpUrl(s) {
   try {
     const url = new URL(s);
@@ -15,59 +7,85 @@ function isValidHttpUrl(s) {
   }
 }
 
-async function handleRequest(request, { MAPPER }) {
-  const { pathname } = new URL(request.url);
-  
-  const q = pathname.substring(1);
+export default {
+  /**
+   * Default fetch event handler
+   * @param {Request} request
+   * @param {{MAPPER: KVNameSpace}} env
+   * @param ctx 
+   * @returns {Promise<Response>}
+   */
+  async fetch(request, { MAPPER }) {
+    try {
+      const { pathname } = new URL(request.url);
 
-  if (q === '') { // home page
-    return new Response("Nope.", { status: 400 });
-  }
-  if (q === 'favicon.ico') {
-    return fetch('https://workers.cloudflare.com/favicon.ico');
-  }
-  const val = await MAPPER.get(q);
-  if (val === null) {  // q not found
-    return new Response("None.", { status: 404 });
-  } 
-  if (q.startsWith('html:')) {
-    return new Response(val, {
-      headers: {
-        "content-type": "text/html;charset=utf-8",
-      },
-    });
-  }
-  if (q.startsWith('css:')) {
-    return new Response(val, {
-      headers: {
-        "content-type": "text/css;charset=utf-8",
-      },
-    });
-  }
-  if (isValidHttpUrl(val)) {
-    const url = new URL(val);
-    const headers = new Headers();
-    switch (url.hostname) {
-      case 'api.github.com':
-        headers.append('Authorization', `Bearer ${url.password}`);
-        headers.append('User-Agent', 'curl/8.0.1');
-        // Handle asset downloading
-        if (url.pathname.indexOf('assets/') !== -1) {
-          // Get asset information
-          const assetInfo = await fetch(url, {headers}).then(r => r.json());
-          // Get binary response of this release asset
-          headers.append('Accept', 'application/octet-stream');
-          return fetch(url, {headers}).then(response => {
-            const newResponse = new Response(response.body, response);
-            newResponse.headers.set('Content-Type', assetInfo['content_type']);
-            newResponse.headers.set('Content-Disposition', `attachment; filename=${assetInfo['name']}`);
-            return newResponse;
-          });
+      if (pathname === '/') { // home page
+        return new Response("Nothing here.", { status: 400 });
+      }
+      if (pathname === '/favicon.ico') {
+        return fetch('https://workers.cloudflare.com/favicon.ico');
+      }
+
+      const q = pathname.slice(1);
+      const val = await MAPPER.get(q);
+      if (val === null) {  // q not found
+        return new Response("None.", { status: 404 });
+      }
+      if (q.startsWith('html:')) {
+        return new Response(val, {
+          headers: {
+            "content-type": "text/html;charset=utf-8",
+          },
+        });
+      }
+      if (q.startsWith('css:')) {
+        return new Response(val, {
+          headers: {
+            "content-type": "text/css;charset=utf-8",
+          },
+        });
+      }
+      if (isValidHttpUrl(val)) {
+        const url = new URL(val);
+        switch (url.hostname) {
+          case 'api.github.com': {
+            const headers = {
+              'Authorization': `Bearer ${url.password}`,
+              'User-Agent': 'curl/8.0.1',
+            }
+            // Handle asset downloading
+            if (url.pathname.indexOf('assets/') !== -1) {
+              // Get asset information
+              const r = await fetch(url, { headers })
+              const asset = await r.json();
+              // Get binary response of this release asset
+              const b = await fetch(url, {
+                headers: {
+                  'Accept': 'application/octet-stream',
+                  ...headers,
+                }
+              });
+              // Copy original response headers
+              const h = new Headers(b.headers);
+              // Override 'Content-Type'
+              h.set('Content-Type', asset['content_type']);
+              // Ensure 'Content-Disposition'
+              h.set('Content-Disposition', `attachment; filename=${asset['name']}`);
+              return new Response(b.body, {
+                status: b.status,
+                statusText: b.statusText,
+                headers: h,
+              });
+            }
+            return fetch(url, { headers });
+          }
+          default:
+            return fetch(url);
         }
-        return fetch(url, {headers});
-      default:
-        return fetch(url, {headers});
+      }
+      return new Response("Error.", { status: 500 });
+    } catch (err) {
+      return new Response(err.stack, { status: 500 })
     }
   }
-  return new Response("Error.", { status: 500 });
 }
