@@ -7,13 +7,12 @@ export default {
 }
 
 function isValidHttpUrl(s) {
-  let url;
   try {
-    url = new URL(s);
-  } catch (err) {
+    const url = new URL(s);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch (_err) {
     return false;
   }
-  return url.protocol === "http:" || url.protocol === "https:";
 }
 
 async function handleRequest(request, { MAPPER }) {
